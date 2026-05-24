@@ -729,8 +729,11 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
     /** @type {Partial<ProxyStreamRequest>} */
     const proxyBody = req.body || {};
     if (rejectProxyPluginContext(proxyBody, res)) return;
-    const { baseUrl, apiKey, model, systemPrompt, messages, maxTokens } =
+    let { baseUrl, apiKey, model, systemPrompt, messages, maxTokens } =
       proxyBody;
+    // Fallback to server-side env vars (e.g. for OpenCode Zen proxy mode)
+    if (!baseUrl) baseUrl = process.env.OPENAI_BASE_URL?.trim();
+    if (!apiKey) apiKey = process.env.OPENAI_API_KEY?.trim();
     if (!baseUrl || !apiKey || !model) {
       return sendApiError(
         res,
@@ -818,6 +821,103 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
       sse.end();
     } catch (err: any) {
       console.error(`[proxy:openai] internal error: ${err.message}`);
+      sendProxyError(sse, err.message, { code: 'INTERNAL_ERROR' });
+      sse.end();
+    }
+  });
+
+  // OpenCode Zen dedicated endpoint — uses server-side OPENAI_BASE_URL / OPENAI_API_KEY
+  // so the frontend does not need to ship credentials for this proxy mode.
+  app.post('/api/zen/stream', async (req, res) => {
+    const baseUrl = process.env.OPENAI_BASE_URL?.trim();
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!baseUrl || !apiKey) {
+      return sendApiError(
+        res,
+        503,
+        'MISSING_CONFIG',
+        'OpenCode Zen is not configured. Set OPENAI_BASE_URL and OPENAI_API_KEY environment variables.',
+      );
+    }
+    const { model, systemPrompt, messages, maxTokens } = req.body || {};
+    if (!model) {
+      return sendApiError(res, 400, 'BAD_REQUEST', 'model is required');
+    }
+
+    const validated = await validateExternalApiBaseUrl(baseUrl);
+    if (validated.error) {
+      return sendApiError(
+        res,
+        validated.forbidden ? 403 : 400,
+        validated.forbidden ? 'FORBIDDEN' : 'BAD_REQUEST',
+        validated.error,
+      );
+    }
+
+    const url = appendVersionedApiPath(baseUrl, '/chat/completions');
+    console.log(`[zen] ${req.method} ${validated.parsed!.hostname} model=${model}`);
+
+    const payloadMessages = Array.isArray(messages) ? [...messages] : [];
+    if (typeof systemPrompt === 'string' && systemPrompt) {
+      payloadMessages.unshift({ role: 'system', content: systemPrompt });
+    }
+
+    const payload: any = {
+      model,
+      messages: payloadMessages,
+      ...buildOpenAIChatTokenParam(
+        model,
+        typeof maxTokens === 'number' && maxTokens > 0 ? maxTokens : 8192,
+      ),
+      stream: true,
+    };
+
+    const sse = createSseResponse(res);
+    sse.send('start', { model });
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(payload),
+        redirect: 'error',
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[zen] upstream error: ${response.status} ${redactAuthTokens(errorText)}`);
+        sendProxyError(sse, `Upstream error: ${response.status}`, {
+          code: proxyErrorCode(response.status),
+          details: errorText,
+          retryable: response.status === 429 || response.status >= 500,
+        });
+        return sse.end();
+      }
+
+      let ended = false;
+      await streamUpstreamSse(response, ({ payload, data }: any) => {
+        if (payload === '[DONE]') {
+          sse.send('end', {});
+          ended = true;
+          return true;
+        }
+        if (!data) return false;
+        const streamError = extractStreamErrorMessage(data);
+        if (streamError) {
+          sendProxyError(sse, `Provider error: ${streamError}`, { details: data });
+          ended = true;
+          return true;
+        }
+        const delta = extractOpenAIText(data);
+        if (delta) sse.send('delta', { delta });
+        return false;
+      });
+      if (!ended) sse.send('end', {});
+      sse.end();
+    } catch (err: any) {
+      console.error(`[zen] internal error: ${err.message}`);
       sendProxyError(sse, err.message, { code: 'INTERNAL_ERROR' });
       sse.end();
     }

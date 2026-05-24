@@ -11434,7 +11434,19 @@ export async function startServer({
       const agents = await detectAgents(appConfig.agentCliEnv ?? {}).catch(() => []);
       agentId = agents.find((agent) => agent.available)?.id ?? null;
     }
-    if (!agentId) throw new Error('No available agent is configured for Orbit. Choose an agent in Settings first.');
+    if (!agentId) {
+      // Fallback to OpenCode Zen proxy if no local CLI agents are available
+      // but an OpenAI-compatible proxy is configured (e.g. OpenCode Zen).
+      const hasOpenAiProxy = !!(
+        process.env.OPENAI_BASE_URL?.trim() ||
+        process.env.OPENAI_API_KEY?.trim()
+      );
+      if (hasOpenAiProxy) {
+        agentId = 'zen';
+      } else {
+        throw new Error('No available agent is configured for Orbit. Choose an agent in Settings first.');
+      }
+    }
 
     const now = Date.now();
     const projectId = `orbit-${randomUUID()}`;
@@ -12043,7 +12055,16 @@ export async function startServer({
       agentId = agents.find((agent) => agent.available)?.id ?? null;
     }
     if (!agentId) {
-      throw new Error('No available agent is configured. Choose an agent in Settings first.');
+      // Fallback to OpenCode Zen proxy if no local CLI agents are available
+      const hasOpenAiProxy = !!(
+        process.env.OPENAI_BASE_URL?.trim() ||
+        process.env.OPENAI_API_KEY?.trim()
+      );
+      if (hasOpenAiProxy) {
+        agentId = 'zen';
+      } else {
+        throw new Error('No available agent is configured. Choose an agent in Settings first.');
+      }
     }
 
     const now = startedAt;

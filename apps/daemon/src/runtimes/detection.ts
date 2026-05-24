@@ -131,6 +131,26 @@ async function probe(
   def: RuntimeAgentDef,
   configuredEnv: Record<string, string> = {},
 ): Promise<DetectedAgent> {
+  // Special handling for proxy agents that don't require a local CLI binary
+  if (def.id === 'zen') {
+    const hasOpenAiProxy = !!(
+      process.env.OPENAI_BASE_URL?.trim() ||
+      configuredEnv.OPENAI_BASE_URL?.trim()
+    );
+    if (hasOpenAiProxy) {
+      return {
+        ...stripFns(def),
+        models: def.fallbackModels ?? [DEFAULT_MODEL_OPTION],
+        modelsSource: 'fallback',
+        available: true,
+        path: process.env.OPENAI_BASE_URL || configuredEnv.OPENAI_BASE_URL || 'zen-proxy',
+        version: 'proxy',
+        ...installMetaForAgent(def.id),
+      };
+    }
+    return unavailableAgent(def);
+  }
+
   // Detection must probe the exact path the runtime will spawn, not just the
   // PATH-visible shim. This is load-bearing for Codex under nvm/fnm/mise:
   // the discovered `codex` entry is often a `#!/usr/bin/env node` wrapper
