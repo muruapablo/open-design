@@ -274,6 +274,11 @@ export async function streamViaDaemon({
   onRunEventId,
   analyticsHints,
 }: DaemonStreamOptions): Promise<void> {
+  // Route OpenCode Zen through the dedicated proxy endpoint
+  if (agentId === 'zen') {
+    return streamViaZen({ history, signal, cancelSignal, handlers, model, onRunStatus, onRunEventId });
+  }
+
   const emitRunStatus = (status: ChatRunStatus) => {
     onRunStatus?.(status);
     notifyRunsChanged();
@@ -651,6 +656,117 @@ async function consumeDaemonRun({
 
 function isChatRunStatus(value: unknown): value is ChatRunStatus {
   return value === 'queued' || value === 'running' || value === 'succeeded' || value === 'failed' || value === 'canceled';
+}
+
+/**
+ * Stream via OpenCode Zen proxy endpoint. This does not create a daemon run;
+ * it streams directly from the Zen-compatible API using server-side credentials.
+ */
+async function streamViaZen({
+  history,
+  signal,
+  cancelSignal,
+  handlers,
+  model,
+  onRunStatus,
+  onRunEventId,
+}: Omit<DaemonStreamOptions, 'agentId'> & { model?: string | null }): Promise<void> {
+  const emitRunStatus = (status: ChatRunStatus) => {
+    onRunStatus?.(status);
+    notifyRunsChanged();
+  };
+  emitRunStatus('running');
+
+  const messages = history.map((m) => ({ role: m.role, content: m.content }));
+  const body = JSON.stringify({
+    model: model || 'kimi-k2-6',
+    messages,
+    maxTokens: 8192,
+  });
+
+  try {
+    if (cancelSignal?.aborted) {
+      emitRunStatus('canceled');
+      return;
+    }
+
+    const resp = await fetch(daemonUrl('/api/zen/stream'), {
+      method: 'POST',
+      headers: { ...daemonHeaders(), 'Content-Type': 'application/json' },
+      body,
+      signal,
+    });
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      emitRunStatus('failed');
+      handlers.onError(new Error(`zen ${resp.status}: ${text || 'no body'}`));
+      return;
+    }
+
+    if (!resp.body) {
+      emitRunStatus('failed');
+      handlers.onError(new Error('zen: no response body'));
+      return;
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let acc = '';
+    let lastEventId: string | null = null;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buf.indexOf('\n\n')) !== -1) {
+        const frame = buf.slice(0, idx);
+        buf = buf.slice(idx + 2);
+        const parsed = parseSseFrame(frame);
+        if (!parsed || parsed.kind !== 'event') continue;
+        if (parsed.id) {
+          lastEventId = parsed.id;
+          onRunEventId?.(parsed.id);
+        }
+
+        const eventName = parsed.event;
+        const eventData = parsed.data as any;
+        if (eventName === 'start') {
+          handlers.onAgentEvent({ kind: 'status', label: 'starting', detail: 'zen' });
+          continue;
+        }
+        if (eventName === 'delta') {
+          const delta = String(eventData?.delta ?? '');
+          acc += delta;
+          handlers.onDelta(delta);
+          handlers.onAgentEvent({ kind: 'text', text: delta });
+          continue;
+        }
+        if (eventName === 'end') {
+          emitRunStatus('succeeded');
+          handlers.onDone(acc);
+          return;
+        }
+        if (eventName === 'error') {
+          emitRunStatus('failed');
+          handlers.onError(new Error(daemonSseErrorMessage(eventData as SseErrorPayload)));
+          return;
+        }
+      }
+    }
+
+    emitRunStatus('succeeded');
+    handlers.onDone(acc);
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      emitRunStatus('canceled');
+      return;
+    }
+    emitRunStatus('failed');
+    handlers.onError(err instanceof Error ? err : new Error(String(err)));
+  }
 }
 
 function normalizeToolInput(input: unknown): unknown {
