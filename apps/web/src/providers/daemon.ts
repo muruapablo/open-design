@@ -49,6 +49,29 @@ const MAX_TRANSCRIPT_MESSAGE_CHARS = 12_000;
 const LARGE_TOOL_RESULT_CHARS = 8_000;
 const HIGH_INPUT_TOKEN_WARNING_THRESHOLD = 200_000;
 
+const DAEMON_BASE_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL)
+  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL)
+  || '';
+
+const DAEMON_API_TOKEN = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_TOKEN)
+  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_TOKEN)
+  || '';
+
+function daemonUrl(path: string): string {
+  const base = DAEMON_BASE_URL.replace(/\/$/, '');
+  return base ? `${base}${path}` : path;
+}
+
+function daemonHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    'X-OD-Client': detectClientType(),
+  };
+  if (DAEMON_API_TOKEN) {
+    headers['Authorization'] = `Bearer ${DAEMON_API_TOKEN}`;
+  }
+  return headers;
+}
+
 export function latestUserPromptFromHistory(history: ChatMessage[]): string {
   for (let i = history.length - 1; i >= 0; i -= 1) {
     const message = history[i];
@@ -282,15 +305,11 @@ export async function streamViaDaemon({
   const body = JSON.stringify(request);
 
   try {
-    const createResp = await fetch('/api/runs', {
+    const createResp = await fetch(daemonUrl('/api/runs'), {
       method: 'POST',
       headers: {
+        ...daemonHeaders(),
         'Content-Type': 'application/json',
-        // Tells the daemon which front-end carrier started the run so the
-        // telemetry trace can be tagged 'client:desktop' vs 'client:web'.
-        // The daemon falls back to a User-Agent sniff when this header is
-        // absent (e.g. third-party clients), so omitting it in tests is OK.
-        'X-OD-Client': detectClientType(),
       },
       body,
     });
@@ -344,7 +363,7 @@ export async function reattachDaemonRun(options: DaemonReattachOptions): Promise
 
 export async function fetchChatRunStatus(runId: string): Promise<ChatRunStatusResponse | null> {
   try {
-    const resp = await fetch(`/api/runs/${encodeURIComponent(runId)}`);
+    const resp = await fetch(daemonUrl(`/api/runs/${encodeURIComponent(runId)}`), { headers: daemonHeaders() });
     if (!resp.ok) return null;
     return (await resp.json()) as ChatRunStatusResponse;
   } catch {
@@ -365,9 +384,9 @@ export async function submitChatRunToolResult(
   options: { isError?: boolean } = {},
 ): Promise<{ ok: boolean; status?: number }> {
   try {
-    const resp = await fetch(`/api/runs/${encodeURIComponent(runId)}/tool-result`, {
+    const resp = await fetch(daemonUrl(`/api/runs/${encodeURIComponent(runId)}/tool-result`), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...daemonHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ toolUseId, content, isError: !!options.isError }),
     });
     return { ok: resp.ok, status: resp.status };
@@ -391,9 +410,9 @@ export async function reportChatRunFeedback(req: {
   customReason: string;
 }): Promise<void> {
   try {
-    await fetch(`/api/runs/${encodeURIComponent(req.runId)}/feedback`, {
+    await fetch(daemonUrl(`/api/runs/${encodeURIComponent(req.runId)}/feedback`), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...daemonHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
     });
   } catch {
@@ -407,7 +426,7 @@ export async function listActiveChatRuns(
 ): Promise<ChatRunStatusResponse[]> {
   try {
     const qs = new URLSearchParams({ projectId, conversationId, status: 'active' });
-    const resp = await fetch(`/api/runs?${qs.toString()}`);
+    const resp = await fetch(daemonUrl(`/api/runs?${qs.toString()}`), { headers: daemonHeaders() });
     if (!resp.ok) return [];
     const body = (await resp.json()) as ChatRunListResponse;
     return body.runs ?? [];
@@ -418,7 +437,7 @@ export async function listActiveChatRuns(
 
 export async function listProjectRuns(): Promise<ChatRunStatusResponse[]> {
   try {
-    const resp = await fetch('/api/runs');
+    const resp = await fetch(daemonUrl('/api/runs'), { headers: daemonHeaders() });
     if (!resp.ok) return [];
     const body = (await resp.json()) as ChatRunListResponse;
     return body.runs ?? [];
@@ -469,8 +488,9 @@ async function consumeDaemonRun({
       const qs = lastEventId ? `?after=${encodeURIComponent(lastEventId)}` : '';
       let resp: Response;
       try {
-        resp = await fetch(`/api/runs/${encodeURIComponent(runId)}/events${qs}`, {
+        resp = await fetch(daemonUrl(`/api/runs/${encodeURIComponent(runId)}/events${qs}`), {
           method: 'GET',
+          headers: daemonHeaders(),
           signal,
         });
       } catch (err) {
@@ -725,9 +745,9 @@ export async function saveArtifact(
   html: string,
 ): Promise<{ url: string; path: string } | null> {
   try {
-    const resp = await fetch('/api/artifacts/save', {
+    const resp = await fetch(daemonUrl('/api/artifacts/save'), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { ...daemonHeaders(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ identifier, title, html }),
     });
     if (!resp.ok) return null;
