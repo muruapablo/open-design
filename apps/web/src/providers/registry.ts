@@ -14,6 +14,20 @@ import type {
   ImportLocalDesignSystemResponse,
   ReplaceProjectWorkingDirResponse,
 } from '@open-design/contracts';
+
+function getDaemonBaseUrl(): string {
+  return (
+    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL) ||
+    (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL) ||
+    ''
+  );
+}
+
+function fetchApi(path: string, init?: RequestInit): Promise<Response> {
+  const base = getDaemonBaseUrl();
+  const url = base ? `${base.replace(/\/$/, '')}${path}` : path;
+  return fetch(url, init);
+}
 import type {
   AgentInfo,
   AppVersionInfo,
@@ -88,7 +102,7 @@ function deployProviderQuery(providerId?: WebDeployProviderId): string {
 
 export async function fetchAgents(options?: { throwOnError?: boolean }): Promise<AgentInfo[]> {
   try {
-    const resp = await fetch('/api/agents');
+    const resp = await fetchApi('/api/agents');
     if (!resp.ok) {
       if (options?.throwOnError) throw new Error(`agents ${resp.status}`);
       return [];
@@ -103,7 +117,7 @@ export async function fetchAgents(options?: { throwOnError?: boolean }): Promise
 
 export async function fetchSkills(): Promise<SkillSummary[]> {
   try {
-    const resp = await fetch('/api/skills');
+    const resp = await fetchApi('/api/skills');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { skills: SkillSummary[] };
     return json.skills ?? [];
@@ -119,7 +133,7 @@ export async function fetchSkills(): Promise<SkillSummary[]> {
 // specs/current/skills-and-design-templates.md.
 export async function fetchDesignTemplates(): Promise<SkillSummary[]> {
   try {
-    const resp = await fetch('/api/design-templates');
+    const resp = await fetchApi('/api/design-templates');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { designTemplates: SkillSummary[] };
     return json.designTemplates ?? [];
@@ -145,7 +159,7 @@ export async function fetchDesignTemplate(id: string): Promise<SkillDetail | nul
 // empty state.
 export async function fetchCodexPets(): Promise<CodexPetsResponse> {
   try {
-    const resp = await fetch('/api/codex-pets');
+    const resp = await fetchApi('/api/codex-pets');
     if (!resp.ok) return { pets: [], rootDir: '' };
     return (await resp.json()) as CodexPetsResponse;
   } catch {
@@ -161,7 +175,7 @@ export async function syncCommunityPets(
   input?: SyncCommunityPetsRequest,
 ): Promise<SyncCommunityPetsResponse & { error?: string }> {
   try {
-    const resp = await fetch('/api/codex-pets/sync', {
+    const resp = await fetchApi('/api/codex-pets/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input ?? {}),
@@ -219,7 +233,7 @@ export async function importSkill(
   input: SkillImportInput,
 ): Promise<{ skill: SkillSummary } | { error: SkillImportError }> {
   try {
-    const resp = await fetch('/api/skills/import', {
+    const resp = await fetchApi('/api/skills/import', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -349,7 +363,7 @@ export async function fetchSkill(id: string): Promise<SkillDetail | null> {
 
 export async function fetchDesignSystems(): Promise<DesignSystemSummary[]> {
   try {
-    const resp = await fetch('/api/design-systems');
+    const resp = await fetchApi('/api/design-systems');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { designSystems: DesignSystemSummary[] };
     return json.designSystems ?? [];
@@ -433,7 +447,7 @@ export async function createDesignSystemDraft(
   input: DesignSystemDraftInput,
 ): Promise<DesignSystemDetail | null> {
   try {
-    const resp = await fetch('/api/design-systems', {
+    const resp = await fetchApi('/api/design-systems', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -449,7 +463,7 @@ export async function startDesignSystemGenerationJob(
   input: DesignSystemDraftInput,
 ): Promise<DesignSystemGenerationJob | null> {
   try {
-    const resp = await fetch('/api/design-systems/generation-jobs', {
+    const resp = await fetchApi('/api/design-systems/generation-jobs', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -576,7 +590,7 @@ export async function importLocalDesignSystem(
   input: ImportLocalDesignSystemRequest,
 ): Promise<ImportLocalDesignSystemResponse | { error: SkillImportError }> {
   try {
-    const resp = await fetch('/api/design-systems/import/local', {
+    const resp = await fetchApi('/api/design-systems/import/local', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -598,7 +612,7 @@ export async function importGitHubDesignSystem(
   input: ImportGitHubDesignSystemRequest,
 ): Promise<ImportGitHubDesignSystemResponse | { error: SkillImportError }> {
   try {
-    const resp = await fetch('/api/design-systems/import/github', {
+    const resp = await fetchApi('/api/design-systems/import/github', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -630,7 +644,7 @@ async function readImportError(resp: Response): Promise<SkillImportError> {
 
 export async function fetchPromptTemplates(): Promise<PromptTemplateSummary[]> {
   try {
-    const resp = await fetch('/api/prompt-templates');
+    const resp = await fetchApi('/api/prompt-templates');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { promptTemplates: PromptTemplateSummary[] };
     return json.promptTemplates ?? [];
@@ -655,10 +669,20 @@ export async function fetchPromptTemplate(
   }
 }
 
+function daemonBaseUrl(): string {
+  return (
+    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL) ||
+    (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL) ||
+    ''
+  );
+}
+
 export async function daemonIsLive(): Promise<boolean> {
   if (!isDaemonConnected()) return false;
   try {
-    const resp = await fetch('/api/health');
+    const base = daemonBaseUrl();
+    const url = base ? `${base.replace(/\/$/, '')}/api/health` : '/api/health';
+    const resp = await fetch(url);
     return resp.ok;
   } catch {
     return false;
@@ -667,7 +691,7 @@ export async function daemonIsLive(): Promise<boolean> {
 
 export async function fetchConnectors(): Promise<ConnectorDetail[]> {
   try {
-    const resp = await fetch('/api/connectors');
+    const resp = await fetchApi('/api/connectors');
     if (!resp.ok) return [];
     const json = (await resp.json()) as ConnectorListResponse;
     return json.connectors ?? [];
@@ -680,7 +704,7 @@ export async function fetchConnectorStatuses(options?: {
   signal?: AbortSignal;
 }): Promise<ConnectorStatusResponse['statuses']> {
   try {
-    const resp = await fetch('/api/connectors/status', { signal: options?.signal });
+    const resp = await fetchApi('/api/connectors/status', { signal: options?.signal });
     if (!resp.ok) return {};
     const json = (await resp.json()) as ConnectorStatusResponse;
     return json.statuses ?? {};
@@ -754,7 +778,7 @@ export async function openExternalUrl(url: string): Promise<boolean> {
     if (opened.ok) return true;
   }
   try {
-    const resp = await fetch('/api/system/open-external', {
+    const resp = await fetchApi('/api/system/open-external', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
@@ -858,7 +882,7 @@ export async function connectConnector(connectorId: string): Promise<ConnectorAc
 }
 
 async function prepareConnectorAuthConfig(connectorId: string): Promise<{ status: 'ready' } | { status: 'error'; message: string }> {
-  const resp = await fetch('/api/connectors/auth-configs/prepare', {
+  const resp = await fetchApi('/api/connectors/auth-configs/prepare', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ connectorIds: [connectorId] }),
@@ -1041,7 +1065,7 @@ function isAppVersionInfo(value: unknown): value is AppVersionInfo {
 
 export async function fetchAppVersionInfo(): Promise<AppVersionInfo | null> {
   try {
-    const resp = await fetch('/api/version');
+    const resp = await fetchApi('/api/version');
     if (!resp.ok) return null;
     const json = (await resp.json()) as Partial<AppVersionResponse>;
     return isAppVersionInfo(json.version) ? json.version : null;
@@ -1058,7 +1082,7 @@ export type LatestGithubReleaseInfo = {
 
 export async function fetchLatestGithubReleaseInfo(): Promise<LatestGithubReleaseInfo | null> {
   try {
-    const resp = await fetch('/api/github/open-design/releases/latest');
+    const resp = await fetchApi('/api/github/open-design/releases/latest');
     if (!resp.ok) return null;
     const json = (await resp.json()) as Partial<OpenDesignGithubLatestReleaseResponse>;
     if (typeof json.tag_name !== 'string' || typeof json.html_url !== 'string') return null;
@@ -1131,7 +1155,7 @@ export async function updateDeployConfig(
   input: WebUpdateDeployConfigRequest,
 ): Promise<WebDeployConfigResponse | null> {
   try {
-    const resp = await fetch('/api/deploy/config', {
+    const resp = await fetchApi('/api/deploy/config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -1151,7 +1175,7 @@ export async function updateDeployConfig(
 
 export async function fetchCloudflarePagesZones(): Promise<WebCloudflarePagesZonesResponse | null> {
   try {
-    const resp = await fetch('/api/deploy/cloudflare-pages/zones');
+    const resp = await fetchApi('/api/deploy/cloudflare-pages/zones');
     if (!resp.ok) {
       const payload = (await resp.json().catch(() => null)) as
         | { error?: { message?: string }; message?: string }
@@ -1758,7 +1782,7 @@ export async function renameProjectFile(
 
 export async function openFolderDialog(): Promise<string | null> {
   try {
-    const resp = await fetch('/api/dialog/open-folder', { method: 'POST' });
+    const resp = await fetchApi('/api/dialog/open-folder', { method: 'POST' });
     if (!resp.ok) return null;
     const data = await resp.json();
     return typeof data.path === 'string' && data.path.length > 0 ? data.path : null;
@@ -1800,7 +1824,7 @@ export async function replaceProjectWorkingDir(
 export async function fetchHostEditors(): Promise<
   import('@open-design/contracts').HostEditorsResponse
 > {
-  const resp = await fetch('/api/editors');
+  const resp = await fetchApi('/api/editors');
   if (!resp.ok) throw new Error(`GET /api/editors failed: ${resp.status}`);
   return (await resp.json()) as import('@open-design/contracts').HostEditorsResponse;
 }
@@ -1914,7 +1938,7 @@ export async function installSkill(
   input: InstallInput,
 ): Promise<{ skill: SkillSummary } | { error: string }> {
   try {
-    const resp = await fetch('/api/skills/install', {
+    const resp = await fetchApi('/api/skills/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -1946,7 +1970,7 @@ export async function installDesignSystem(
   input: InstallInput,
 ): Promise<{ designSystem: DesignSystemSummary } | { error: string }> {
   try {
-    const resp = await fetch('/api/design-systems/install', {
+    const resp = await fetchApi('/api/design-systems/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
