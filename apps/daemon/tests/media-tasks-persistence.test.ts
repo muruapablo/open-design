@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import Database from 'better-sqlite3';
+import Database from 'libsql';
 import {
   deleteMediaTask,
   getMediaTask,

@@ -4,7 +4,7 @@
 // (HTML artifacts, sketches, uploads); this database tracks the metadata
 // that used to live in localStorage.
 
-import Database from 'better-sqlite3';
+import Database from 'libsql';
 import path from 'node:path';
 import fs from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -28,6 +28,19 @@ function rows(value: unknown[]): DbRow[] {
 }
 
 export function openDatabase(projectRoot: string, { dataDir }: { dataDir?: string } = {}): SqliteDb {
+  const useTurso = process.env.OD_DB_PROVIDER === 'turso' && process.env.TURSO_DATABASE_URL;
+
+  if (useTurso) {
+    const url = process.env.TURSO_DATABASE_URL!;
+    const authToken = process.env.TURSO_AUTH_TOKEN ?? '';
+    const db = new Database(url, { authToken } as any);
+    db.exec('PRAGMA foreign_keys = ON');
+    migrate(db);
+    dbInstance = db;
+    dbFile = url;
+    return db;
+  }
+
   const dir = dataDir ? path.resolve(dataDir) : path.join(projectRoot, '.od');
   const file = path.join(dir, 'app.sqlite');
   if (dbInstance && dbFile === file) return dbInstance;

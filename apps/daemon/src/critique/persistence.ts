@@ -1,4 +1,4 @@
-import type Database from 'better-sqlite3';
+import type Database from 'libsql';
 import {
   CRITIQUE_RUN_STATUSES,
   type CritiquePersistedStatus,

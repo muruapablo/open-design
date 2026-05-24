@@ -9,7 +9,7 @@
 // `pruneExpiredSnapshots(db, { before: cutoff })` synchronously without
 // touching the periodic timer.
 
-import type Database from 'better-sqlite3';
+import type Database from 'libsql';
 import { pruneExpiredSnapshots, type PruneExpiredResult } from './snapshots.js';
 import { readPluginEnvKnobs } from '../app-config.js';
 
