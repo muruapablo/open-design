@@ -62,6 +62,11 @@ import {
   syncMediaProvidersToDaemon,
 } from './state/config';
 import { applyAppearanceToDocument } from './state/appearance';
+import {
+  isDaemonConnected,
+  subscribeDaemonConnection,
+  toggleDaemonConnection,
+} from './state/daemon-connection';
 import { isMacPlatform } from './utils/platform';
 import {
   createProject,
@@ -195,6 +200,7 @@ export function App() {
   const [settingsInitialSection, setSettingsInitialSection] = useState<SettingsSection>('execution');
   const [integrationInitialTab, setIntegrationInitialTab] = useState<IntegrationTab>('mcp');
   const [daemonLive, setDaemonLive] = useState(false);
+  const [daemonConnected, setDaemonConnected] = useState(isDaemonConnected);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   // Functional skills (capabilities the agent invokes mid-task) — stays
   // small and lives under the Settings → Skills surface.
@@ -264,6 +270,14 @@ export function App() {
   useEffect(() => {
     analytics.setConsent(config.telemetry?.metrics === true);
   }, [analytics.setConsent, config.telemetry?.metrics]);
+
+  // Subscribe to daemon-connection changes so the UI can show the
+  // connect/disconnect button state and skip health pings when offline.
+  useEffect(() => {
+    return subscribeDaemonConnection(() => {
+      setDaemonConnected(isDaemonConnected());
+    });
+  }, []);
 
   // Sync PostHog's distinct_id with the anonymous installationId, both on
   // first opt-in (when the daemon stamps a fresh id) and on Delete-my-data
@@ -1466,6 +1480,26 @@ export function App() {
           route={route}
           projects={projects}
         />
+        <button
+          type="button"
+          className="daemon-toggle-btn"
+          onClick={() => {
+            const nowConnected = toggleDaemonConnection();
+            setDaemonConnected(nowConnected);
+            if (nowConnected) {
+              // Re-run bootstrap when reconnecting
+              void (async () => {
+                const alive = await daemonIsLive();
+                setDaemonLive(alive);
+              })();
+            } else {
+              setDaemonLive(false);
+            }
+          }}
+          title={daemonConnected ? 'Disconnect daemon (saves tokens)' : 'Connect to daemon'}
+        >
+          {daemonConnected ? '🟢 Daemon' : '🔴 Daemon'}
+        </button>
         <div className="workspace-shell__body">{appMain}</div>
       </div>
       {clientType === 'desktop' ? null : (

@@ -1,3 +1,4 @@
+import { isDaemonConnected } from '../state/daemon-connection';
 import type {
   ConnectorAuthConfigPrepareResponse,
   ConnectorDetail,
@@ -655,6 +656,7 @@ export async function fetchPromptTemplate(
 }
 
 export async function daemonIsLive(): Promise<boolean> {
+  if (!isDaemonConnected()) return false;
   try {
     const resp = await fetch('/api/health');
     return resp.ok;
