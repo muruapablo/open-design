@@ -410,17 +410,23 @@ export function App() {
         setAgentsLoading(false);
         // Auto-select the first available agent (including proxy agents
         // like Zen) when no agent is configured or the configured one is
-        // not available.
+        // not available. Perform a single atomic update so mode + agentId
+        // land together and do not overwrite each other.
         const currentAgent = config.agentId ? list.find((a) => a.id === config.agentId) : null;
-        if (!currentAgent?.available) {
+        const needsModeSwitch = config.mode !== 'daemon' && list.some((a) => a.available);
+        const needsAgentSwitch = !currentAgent?.available;
+        if (needsModeSwitch || needsAgentSwitch) {
           const firstAvailable = list.find((a) => a.available);
           if (firstAvailable) {
-            handleAgentChange(firstAvailable.id);
+            const next = {
+              ...config,
+              mode: 'daemon' as const,
+              agentId: firstAvailable.id,
+            };
+            saveConfig(next);
+            void syncConfigToDaemon(next);
+            setConfig(next);
           }
-        }
-        // Ensure mode is 'daemon' when we have an available agent
-        if (config.mode !== 'daemon' && list.some((a) => a.available)) {
-          handleModeChange('daemon');
         }
       });
 
