@@ -15,18 +15,10 @@ import type {
   ReplaceProjectWorkingDirResponse,
 } from '@open-design/contracts';
 
-function getDaemonBaseUrl(): string {
-  return (
-    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL) ||
-    (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL) ||
-    ''
-  );
-}
-
 function fetchApi(path: string, init?: RequestInit): Promise<Response> {
-  const base = getDaemonBaseUrl();
-  const url = base ? `${base.replace(/\/$/, '')}${path}` : path;
-  return fetch(url, init);
+  // Always use relative paths in the browser so Next.js rewrites
+  // proxy the request to the remote daemon when configured.
+  return fetch(path, init);
 }
 import type {
   AgentInfo,
@@ -669,20 +661,11 @@ export async function fetchPromptTemplate(
   }
 }
 
-function daemonBaseUrl(): string {
-  return (
-    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL) ||
-    (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL) ||
-    ''
-  );
-}
-
 export async function daemonIsLive(): Promise<boolean> {
   if (!isDaemonConnected()) return false;
   try {
-    const base = daemonBaseUrl();
-    const url = base ? `${base.replace(/\/$/, '')}/api/health` : '/api/health';
-    const resp = await fetch(url);
+    // Use relative path so Next.js rewrites proxy to the remote daemon.
+    const resp = await fetch('/api/health');
     return resp.ok;
   } catch {
     return false;
