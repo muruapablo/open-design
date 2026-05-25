@@ -1186,6 +1186,19 @@ async function testAgentConnectionInternal(
       detail: `Unknown agent id: ${input.agentId}`,
     };
   }
+
+  // Zen is a cloud proxy agent — no local binary needed.
+  if (input.agentId === 'zen') {
+    return {
+      ok: true,
+      kind: 'success',
+      latencyMs: Date.now() - start,
+      model,
+      agentName: def.name,
+      sample: 'OpenCode Zen proxy ready',
+    };
+  }
+
   const configuredAgentEnv = agentCliEnvForAgent(
     validateAgentCliEnv(input.agentCliEnv),
     input.agentId,
