@@ -20,6 +20,7 @@ export function configuredAllowedOrigins(env: NodeJS.ProcessEnv = process.env): 
     .map((origin) => origin.trim())
     .filter(Boolean)
     .map((origin) => {
+      if (origin === '*') return '*';
       const parsed = new URL(origin);
       if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
         throw new Error('OD_ALLOWED_ORIGINS only supports http:// and https:// origins');
@@ -29,7 +30,9 @@ export function configuredAllowedOrigins(env: NodeJS.ProcessEnv = process.env): 
 }
 
 export function configuredAllowedHosts(origins = configuredAllowedOrigins()): string[] {
-  return origins.map((origin) => new URL(origin).host);
+  return origins
+    .filter((origin) => origin !== '*')
+    .map((origin) => new URL(origin).host);
 }
 
 export function allowedBrowserPorts(
@@ -123,6 +126,7 @@ export function isAllowedBrowserOrigin(
   bindHost: string,
   extraAllowedOrigins: string[],
 ): boolean {
+  if (extraAllowedOrigins.includes('*')) return true;
   if (extraAllowedOrigins.includes(String(origin))) return true;
 
   let parsedOrigin;
@@ -162,9 +166,9 @@ export function isLocalSameOrigin(
   const ports = allowedBrowserPorts(port, env);
   const bindHost = env.OD_BIND_HOST || '127.0.0.1';
   const extraAllowedOrigins = configuredAllowedOrigins(env);
-  const ipOnlyExtraOrigins = extraAllowedOrigins.filter((o) =>
-    isIpLiteralHostname(new URL(o).hostname),
-  );
+  const ipOnlyExtraOrigins = extraAllowedOrigins
+    .filter((o) => o !== '*')
+    .filter((o) => isIpLiteralHostname(new URL(o).hostname));
 
   const localHostAllowed = isAllowedBrowserHost(host, ports, bindHost, ipOnlyExtraOrigins);
   if (origin == null || origin === '') {
