@@ -183,26 +183,20 @@ const nextConfig: NextConfig = {
         output: 'standalone' as const,
       }
       : {
-        async rewrites() {
-          const remoteDaemon = process.env.NEXT_PUBLIC_DAEMON_URL?.trim();
-          if (remoteDaemon) {
-            // Production with a remote daemon (e.g. Render) — proxy API calls
-            // through Next.js so the browser talks same-origin to Vercel.
-            const base = remoteDaemon.replace(/\/$/, '');
-            return [
-              { source: '/api/:path*', destination: `${base}/api/:path*` },
-              { source: '/artifacts/:path*', destination: `${base}/artifacts/:path*` },
-              { source: '/frames/:path*', destination: `${base}/frames/:path*` },
-            ];
-          }
-          // Local dev — proxy to sibling daemon port
-          return [
-            { source: '/api/:path*', destination: `${DAEMON_ORIGIN}/api/:path*` },
-            { source: '/artifacts/:path*', destination: `${DAEMON_ORIGIN}/artifacts/:path*` },
-            { source: '/frames/:path*', destination: `${DAEMON_ORIGIN}/frames/:path*` },
-          ];
-        },
-        ...(isProd ? {} : { devIndicators: { position: 'bottom-right' as const } }),
+        // Local dev rewrites only — production uses src/middleware.ts instead
+        // so it can inject the Authorization header from server-side env vars.
+        ...(isProd
+          ? {}
+          : {
+              async rewrites() {
+                return [
+                  { source: '/api/:path*', destination: `${DAEMON_ORIGIN}/api/:path*` },
+                  { source: '/artifacts/:path*', destination: `${DAEMON_ORIGIN}/artifacts/:path*` },
+                  { source: '/frames/:path*', destination: `${DAEMON_ORIGIN}/frames/:path*` },
+                ];
+              },
+              devIndicators: { position: 'bottom-right' as const },
+            }),
       }),
 };
 
