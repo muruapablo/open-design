@@ -1,4 +1,5 @@
 import { isDaemonConnected } from '../state/daemon-connection';
+import { odFetch } from '../utils/odFetch';
 import type {
   ConnectorAuthConfigPrepareResponse,
   ConnectorDetail,
@@ -16,8 +17,7 @@ import type {
 } from '@open-design/contracts';
 
 function fetchApi(path: string, init?: RequestInit): Promise<Response> {
-  // Use relative paths so Next.js API routes proxy to daemon with auth
-  return fetch(path, init);
+  return odFetch(path, init);
 }
 import type {
   AgentInfo,
