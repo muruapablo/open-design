@@ -15,10 +15,37 @@ import type {
   ReplaceProjectWorkingDirResponse,
 } from '@open-design/contracts';
 
+const DAEMON_BASE_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL)
+  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL)
+  || '';
+
+const DAEMON_API_TOKEN = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_TOKEN)
+  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_TOKEN)
+  || '';
+
+function daemonUrl(path: string): string {
+  const base = DAEMON_BASE_URL.replace(/\/$/, '');
+  return base ? `${base}${path}` : path;
+}
+
+function daemonHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (DAEMON_API_TOKEN) {
+    headers['Authorization'] = `Bearer ${DAEMON_API_TOKEN}`;
+  }
+  return headers;
+}
+
 function fetchApi(path: string, init?: RequestInit): Promise<Response> {
-  // Always use relative paths in the browser so Next.js rewrites
-  // proxy the request to the remote daemon when configured.
-  return fetch(path, init);
+  const url = daemonUrl(path);
+  const headers = daemonHeaders();
+  return fetch(url, {
+    ...init,
+    headers: {
+      ...headers,
+      ...(init?.headers || {}),
+    },
+  });
 }
 import type {
   AgentInfo,
