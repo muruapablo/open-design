@@ -29,3 +29,24 @@ export function odFetch(path: string, init?: RequestInit): Promise<Response> {
     },
   });
 }
+
+// Intercept global fetch to redirect relative daemon paths to remote daemon
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    let path: string | undefined;
+    if (typeof input === 'string') {
+      path = input;
+    } else if (input instanceof URL) {
+      path = input.pathname;
+    } else if (input instanceof Request) {
+      path = input.url;
+    }
+    
+    if (path && (path.startsWith('/api/') || path.startsWith('/artifacts/') || path.startsWith('/frames/'))) {
+      return odFetch(path, init);
+    }
+    
+    return originalFetch(input, init);
+  };
+}
