@@ -1,3 +1,4 @@
+import { odFetch } from "../utils/odFetch";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { validateBaseUrl } from '@open-design/contracts/api/connectionTest';
@@ -3963,7 +3964,7 @@ export async function persistConfigAndRunOrbit(
     });
   }
   await syncConfigToDaemon(config, { throwOnError: true });
-  const response = await fetch('/api/orbit/run', {
+  const response = await odFetch('/api/orbit/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ locale: options?.locale ?? null }),
@@ -4078,7 +4079,7 @@ function OrbitSection({
 
   const refreshStatus = async () => {
     try {
-      const response = await fetch('/api/orbit/status');
+      const response = await odFetch('/api/orbit/status');
       if (!response.ok) return;
       if (!isMountedRef.current) return;
       setStatus(await response.json() as OrbitStatusResponse);
@@ -5453,7 +5454,7 @@ function IntegrationsSection() {
   // snippet that would silently fail when pasted.
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/mcp/install-info')
+    odFetch('/api/mcp/install-info')
       .then(async (res) => {
         if (!res.ok) throw new Error(`daemon ${res.status}`);
         return (await res.json()) as McpInstallInfo;

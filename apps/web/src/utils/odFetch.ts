@@ -1,7 +1,31 @@
 // Global fetch wrapper for daemon API calls.
-// Uses relative /api/* paths so Next.js middleware can proxy to the
-// remote daemon with the server-side Authorization token.
+// In production, all calls go directly to the remote daemon URL
+// with the Authorization token to avoid CORS and middleware issues.
+
+const DAEMON_BASE_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL)
+  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL)
+  || '';
+
+const DAEMON_API_TOKEN = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_TOKEN)
+  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_TOKEN)
+  || '';
+
+function daemonUrl(path: string): string {
+  const base = DAEMON_BASE_URL.replace(/\/$/, '');
+  return base ? `${base}${path}` : path;
+}
 
 export function odFetch(path: string, init?: RequestInit): Promise<Response> {
-  return fetch(path, init);
+  const url = daemonUrl(path);
+  const headers: Record<string, string> = {};
+  if (DAEMON_API_TOKEN) {
+    headers['Authorization'] = `Bearer ${DAEMON_API_TOKEN}`;
+  }
+  return fetch(url, {
+    ...init,
+    headers: {
+      ...headers,
+      ...(init?.headers as Record<string, string> || {}),
+    },
+  });
 }

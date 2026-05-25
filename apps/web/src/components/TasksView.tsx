@@ -1,3 +1,4 @@
+import { odFetch } from "../utils/odFetch";
 // Automations tab: one surface for scheduled routines, Orbit-style digests,
 // and live artifact refreshers. The daemon still stores these as routines;
 // the UI presents them as scheduled agent conversations.
@@ -424,27 +425,27 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
 
   const refresh = useCallback(async () => {
     try {
-      const templateRequest = fetch('/api/automation-templates')
+      const templateRequest = odFetch('/api/automation-templates')
         .then(async (res) => {
           if (!res.ok) return null;
           return (await res.json()) as AutomationTemplateListResponse;
         })
         .catch(() => null);
-      const proposalRequest = fetch('/api/automation-proposals?status=pending-review')
+      const proposalRequest = odFetch('/api/automation-proposals?status=pending-review')
         .then(async (res) => {
           if (!res.ok) return null;
           return (await res.json()) as AutomationEvolutionProposalListResponse;
         })
         .catch(() => null);
-      const sourcePacketRequest = fetch('/api/automation-source-packets?limit=3')
+      const sourcePacketRequest = odFetch('/api/automation-source-packets?limit=3')
         .then(async (res) => {
           if (!res.ok) return null;
           return (await res.json()) as AutomationSourcePacketListResponse;
         })
         .catch(() => null);
       const [rRes, pRes, tJson, proposalJson, sourcePacketJson] = await Promise.all([
-        fetch('/api/routines'),
-        fetch('/api/projects'),
+        odFetch('/api/routines'),
+        odFetch('/api/projects'),
         templateRequest,
         proposalRequest,
         sourcePacketRequest,
@@ -516,7 +517,7 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
     setIngestingSource(true);
     setError(null);
     try {
-      const res = await fetch('/api/automation-ingestions', {
+      const res = await odFetch('/api/automation-ingestions', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({

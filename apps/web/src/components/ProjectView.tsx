@@ -1,3 +1,4 @@
+import { odFetch } from "../utils/odFetch";
 import {
   useCallback,
   useEffect,
@@ -1383,7 +1384,7 @@ export function ProjectView({
     // best-effort, never a blocker for the chat round-trip.
     let memoryBody: string | undefined;
     try {
-      const resp = await fetch('/api/memory/system-prompt');
+      const resp = await odFetch('/api/memory/system-prompt');
       if (resp.ok) {
         const json = (await resp.json()) as MemorySystemPromptResponse;
         if (typeof json.body === 'string' && json.body.trim().length > 0) {
@@ -2667,7 +2668,7 @@ export function ProjectView({
             : undefined;
         if (userText.length > 0) {
           try {
-            await fetch('/api/memory/extract', {
+            await odFetch('/api/memory/extract', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -2702,7 +2703,7 @@ export function ProjectView({
             handlers.onDone();
             const assistantText = accumulatedAssistantText.trim();
             if (userText.length === 0 || assistantText.length === 0) return;
-            void fetch('/api/memory/extract', {
+            void odFetch('/api/memory/extract', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({

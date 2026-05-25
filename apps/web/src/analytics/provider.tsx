@@ -1,3 +1,4 @@
+import { odFetch } from "../utils/odFetch";
 'use client';
 
 import {
@@ -99,7 +100,7 @@ export function useAppVersion(): string {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/version');
+        const res = await odFetch('/api/version');
         if (!res.ok) return;
         const body = (await res.json()) as { version?: { version?: string } };
         if (cancelled) return;

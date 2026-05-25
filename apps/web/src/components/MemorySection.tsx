@@ -1,3 +1,4 @@
+import { odFetch } from "../utils/odFetch";
 import {
   useCallback,
   useEffect,
@@ -167,7 +168,7 @@ function writePendingConnectorAuthIds(ids: Set<string>): void {
 }
 
 async function fetchMemoryList(): Promise<MemoryListResponse> {
-  const resp = await fetch('/api/memory');
+  const resp = await odFetch('/api/memory');
   if (!resp.ok) {
     return {
       enabled: true,
@@ -182,7 +183,7 @@ async function fetchMemoryList(): Promise<MemoryListResponse> {
 }
 
 async function fetchMemoryTree(): Promise<MemoryTreeNode[]> {
-  const resp = await fetch('/api/memory/tree');
+  const resp = await odFetch('/api/memory/tree');
   if (!resp.ok) return [];
   const json = (await resp.json()) as MemoryTreeListResponse;
   return json.tree ?? [];
@@ -221,7 +222,7 @@ async function deleteMemoryEntry(id: string): Promise<boolean> {
 }
 
 async function saveMemoryIndex(index: string): Promise<boolean> {
-  const resp = await fetch('/api/memory/index', {
+  const resp = await odFetch('/api/memory/index', {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ index }),
@@ -230,7 +231,7 @@ async function saveMemoryIndex(index: string): Promise<boolean> {
 }
 
 async function setMemoryEnabled(enabled: boolean): Promise<boolean> {
-  const resp = await fetch('/api/memory/config', {
+  const resp = await odFetch('/api/memory/config', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ enabled }),
@@ -241,7 +242,7 @@ async function setMemoryEnabled(enabled: boolean): Promise<boolean> {
 async function setMemoryChatExtractionEnabled(
   chatExtractionEnabled: boolean,
 ): Promise<boolean> {
-  const resp = await fetch('/api/memory/config', {
+  const resp = await odFetch('/api/memory/config', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chatExtractionEnabled }),
@@ -250,14 +251,14 @@ async function setMemoryChatExtractionEnabled(
 }
 
 async function fetchExtractions(): Promise<MemoryExtractionRecord[]> {
-  const resp = await fetch('/api/memory/extractions');
+  const resp = await odFetch('/api/memory/extractions');
   if (!resp.ok) return [];
   const json = (await resp.json()) as MemoryExtractionsResponse;
   return json.extractions ?? [];
 }
 
 async function fetchMemoryConnectors(): Promise<ConnectorDetail[]> {
-  const resp = await fetch('/api/connectors/discovery?hydrateTools=false');
+  const resp = await odFetch('/api/connectors/discovery?hydrateTools=false');
   if (!resp.ok) return [];
   const json = (await resp.json()) as ConnectorDiscoveryResponse;
   return json.connectors ?? [];
@@ -274,7 +275,7 @@ async function suggestConnectorMemories(
   } = { connectorIds };
   if (context.chatAgentId) body.chatAgentId = context.chatAgentId;
   if (context.chatModel) body.chatModel = context.chatModel;
-  const resp = await fetch('/api/memory/connectors/suggest', {
+  const resp = await odFetch('/api/memory/connectors/suggest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -509,7 +510,7 @@ async function deleteExtraction(id: string): Promise<boolean> {
 }
 
 async function clearExtractionHistory(): Promise<boolean> {
-  const resp = await fetch('/api/memory/extractions', { method: 'DELETE' });
+  const resp = await odFetch('/api/memory/extractions', { method: 'DELETE' });
   return resp.ok;
 }
 

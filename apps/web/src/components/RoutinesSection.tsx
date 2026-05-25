@@ -1,3 +1,4 @@
+import { odFetch } from "../utils/odFetch";
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type {
@@ -480,8 +481,8 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
   const refresh = async () => {
     try {
       const [rRes, pRes] = await Promise.all([
-        fetch('/api/routines'),
-        fetch('/api/projects'),
+        odFetch('/api/routines'),
+        odFetch('/api/projects'),
       ]);
       if (!rRes.ok) throw new Error(`routines: ${rRes.status}`);
       const rJson = await rRes.json();
