@@ -409,12 +409,18 @@ export function App() {
         setAgents(list);
         setAgentsLoading(false);
         // Auto-select the first available agent (including proxy agents
-        // like Zen) when no agent is currently configured.
-        if (!config.agentId) {
+        // like Zen) when no agent is configured or the configured one is
+        // not available.
+        const currentAgent = config.agentId ? list.find((a) => a.id === config.agentId) : null;
+        if (!currentAgent?.available) {
           const firstAvailable = list.find((a) => a.available);
           if (firstAvailable) {
             handleAgentChange(firstAvailable.id);
           }
+        }
+        // Ensure mode is 'daemon' when we have an available agent
+        if (config.mode !== 'daemon' && list.some((a) => a.available)) {
+          handleModeChange('daemon');
         }
       });
 
