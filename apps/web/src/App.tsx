@@ -408,6 +408,14 @@ export function App() {
         if (cancelled) return;
         setAgents(list);
         setAgentsLoading(false);
+        // Auto-select the first available agent (including proxy agents
+        // like Zen) when no agent is currently configured.
+        if (!config.agentId) {
+          const firstAvailable = list.find((a) => a.available);
+          if (firstAvailable) {
+            handleAgentChange(firstAvailable.id);
+          }
+        }
       });
 
       // Functional skills + design templates land independently. Both
