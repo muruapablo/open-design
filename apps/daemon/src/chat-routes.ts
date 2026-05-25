@@ -839,9 +839,13 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
         'OpenCode Zen is not configured. Set OPENAI_BASE_URL and OPENAI_API_KEY environment variables.',
       );
     }
-    const { model, systemPrompt, messages, maxTokens } = req.body || {};
+    let { model, systemPrompt, messages, maxTokens } = req.body || {};
     if (!model) {
       return sendApiError(res, 400, 'BAD_REQUEST', 'model is required');
+    }
+    // Map Zen's "default" pseudo-model to an actual supported model
+    if (model === 'default') {
+      model = process.env.ZEN_DEFAULT_MODEL?.trim() || 'kimi-k2-6';
     }
 
     const validated = await validateExternalApiBaseUrl(baseUrl);
