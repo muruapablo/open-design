@@ -182,24 +182,28 @@ const nextConfig: NextConfig = {
       ? {
         output: 'standalone' as const,
       }
-      : !isProd
-      ? {
+      : {
         async rewrites() {
-          // In dev we run the daemon on a sibling port; proxy the app API
-          // proxy so the SPA can hit /api, /artifacts, and /frames without
-          // CORS gymnastics. SSE on /api/chat works through this rewrite
-          // because Next.js's dev server streams responses unbuffered.
+          const remoteDaemon = process.env.NEXT_PUBLIC_DAEMON_URL?.trim();
+          if (remoteDaemon) {
+            // Production with a remote daemon (e.g. Render) — proxy API calls
+            // through Next.js so the browser talks same-origin to Vercel.
+            const base = remoteDaemon.replace(/\/$/, '');
+            return [
+              { source: '/api/:path*', destination: `${base}/api/:path*` },
+              { source: '/artifacts/:path*', destination: `${base}/artifacts/:path*` },
+              { source: '/frames/:path*', destination: `${base}/frames/:path*` },
+            ];
+          }
+          // Local dev — proxy to sibling daemon port
           return [
             { source: '/api/:path*', destination: `${DAEMON_ORIGIN}/api/:path*` },
             { source: '/artifacts/:path*', destination: `${DAEMON_ORIGIN}/artifacts/:path*` },
             { source: '/frames/:path*', destination: `${DAEMON_ORIGIN}/frames/:path*` },
           ];
         },
-        devIndicators: {
-          position: 'bottom-right',
-        },
-      }
-      : {}),
+        ...(isProd ? {} : { devIndicators: { position: 'bottom-right' as const } }),
+      }),
 };
 
 export default nextConfig;
