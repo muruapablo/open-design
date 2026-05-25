@@ -19,9 +19,11 @@ const DAEMON_ORIGIN = `http://127.0.0.1:${DAEMON_PORT}`;
 // Next.js for a traced standalone server while keeping the sidecar-owned daemon
 // proxy in front of it at runtime.
 const isProd = process.env.NODE_ENV !== 'development';
+const isVercel = Boolean(process.env.VERCEL);
 const webOutputMode = process.env.OD_WEB_OUTPUT_MODE;
 const isServerOutput = webOutputMode === 'server' || webOutputMode === 'standalone';
-const shouldStaticExport = isProd && !isServerOutput;
+// Never static-export on Vercel — we need server-side API routes (proxy)
+const shouldStaticExport = isProd && !isServerOutput && !isVercel;
 
 const WEB_ROOT = dirname(fileURLToPath(import.meta.url));
 
