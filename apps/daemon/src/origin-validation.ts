@@ -170,6 +170,9 @@ export function isLocalSameOrigin(
     .filter((o) => o !== '*')
     .filter((o) => isIpLiteralHostname(new URL(o).hostname));
 
+  // Wildcard allows any browser origin — skip local-host checks when present.
+  if (extraAllowedOrigins.includes('*')) return true;
+
   const localHostAllowed = isAllowedBrowserHost(host, ports, bindHost, ipOnlyExtraOrigins);
   if (origin == null || origin === '') {
     if (localHostAllowed) return true;
