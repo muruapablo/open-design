@@ -34,7 +34,6 @@ RUN corepack enable && \
 
 COPY apps ./apps
 RUN pnpm --filter @open-design/daemon build && \
-    pnpm --filter @open-design/web build && \
     pnpm --filter @open-design/daemon deploy --legacy --prod /app/deploy/daemon && \
     pnpm store prune && \
     rm -rf \
@@ -74,7 +73,6 @@ RUN apk add --no-cache tini poppler-utils && \
 
 WORKDIR /app
 COPY --from=build --chown=open-design:open-design /app/deploy/daemon ./apps/daemon
-COPY --from=build --chown=open-design:open-design /app/apps/web/out ./apps/web/out
 COPY --chown=open-design:open-design skills ./skills
 COPY --chown=open-design:open-design design-systems ./design-systems
 COPY --chown=open-design:open-design craft ./craft
