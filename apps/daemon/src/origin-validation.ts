@@ -102,6 +102,8 @@ export function isAllowedBrowserHost(
   bindHost: string,
   extraAllowedOrigins: string[],
 ): boolean {
+  if (extraAllowedOrigins.includes('*')) return true;
+
   const requestHost = parseHostHeader(hostHeader);
   if (!requestHost) return false;
 

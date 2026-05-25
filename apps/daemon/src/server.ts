@@ -3383,6 +3383,29 @@ export async function startServer({
   const app = express();
   app.use(express.json({ limit: '4mb' }));
 
+  // Global CORS — allow any browser origin to reach the daemon API.
+  // Render / Vercel deployments set OD_ALLOWED_ORIGINS=* to opt in.
+  const allowedOrigins = (process.env.OD_ALLOWED_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const corsWildcard = allowedOrigins.includes('*');
+
+  app.use((req, res, next) => {
+    const origin = req.get('origin') ?? '';
+    if (corsWildcard && origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Max-Age', '600');
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+    next();
+  });
+
   // Plan §3.K1 — bearer-token middleware.
   //
   // Active only when OD_API_TOKEN is set. Loopback origins skip the
@@ -12472,3 +12495,4 @@ export function rewriteSkillAssetUrls(html: string, skillId: string): string {
     },
   );
 }
+console.log('OD_ALLOWED_ORIGINS:', process.env.OD_ALLOWED_ORIGINS);
