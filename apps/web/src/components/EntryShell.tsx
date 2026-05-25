@@ -859,6 +859,18 @@ function OnboardingView({
     };
   }, []);
 
+  // Auto-populate visibleAgentIds with available agents (including proxy agents
+  // like OpenCode Zen that don't need a local CLI scan).
+  useEffect(() => {
+    const availableIds = agents.filter((a) => a.available).map((a) => a.id);
+    if (availableIds.length > 0) {
+      setVisibleAgentIds((current) => {
+        const missing = availableIds.filter((id) => !current.includes(id));
+        return missing.length > 0 ? [...current, ...missing] : current;
+      });
+    }
+  }, [agents]);
+
   // Onboarding step exposure. Design-system intake used to live here
   // as step 3, but it is temporarily removed from first-run
   // onboarding and remains available from the app surfaces.
