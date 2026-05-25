@@ -49,27 +49,16 @@ const MAX_TRANSCRIPT_MESSAGE_CHARS = 12_000;
 const LARGE_TOOL_RESULT_CHARS = 8_000;
 const HIGH_INPUT_TOKEN_WARNING_THRESHOLD = 200_000;
 
-const DAEMON_BASE_URL = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_URL)
-  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_URL)
-  || '';
-
-const DAEMON_API_TOKEN = (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DAEMON_TOKEN)
-  || (typeof window !== 'undefined' && (window as any).__ENV__?.NEXT_PUBLIC_DAEMON_TOKEN)
-  || '';
-
+// Use relative paths so Next.js API routes can proxy to the daemon
+// with server-side Authorization token, avoiding CORS issues.
 function daemonUrl(path: string): string {
-  const base = DAEMON_BASE_URL.replace(/\/$/, '');
-  return base ? `${base}${path}` : path;
+  return path;
 }
 
 function daemonHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
+  return {
     'X-OD-Client': detectClientType(),
   };
-  if (DAEMON_API_TOKEN) {
-    headers['Authorization'] = `Bearer ${DAEMON_API_TOKEN}`;
-  }
-  return headers;
 }
 
 export function latestUserPromptFromHistory(history: ChatMessage[]): string {
