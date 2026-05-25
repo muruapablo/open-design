@@ -1,3 +1,4 @@
+import { odFetch } from '../utils/odFetch';
 import type { AppConfigPrefs } from '@open-design/contracts';
 import { MEDIA_PROVIDERS } from '../media/models';
 import { isOpenAICompatible } from '../providers/openai-compatible';
@@ -532,7 +533,7 @@ export function buildMediaProvidersForDaemonSave(
 
 export async function fetchComposioConfigFromDaemon(): Promise<AppConfig['composio'] | null> {
   try {
-    const response = await fetch('/api/connectors/composio/config');
+    const response = await odFetch('/api/connectors/composio/config');
     if (!response.ok) return null;
     const payload = await response.json() as PublicComposioConfigResponse;
     return {
@@ -547,7 +548,7 @@ export async function fetchComposioConfigFromDaemon(): Promise<AppConfig['compos
 
 export async function fetchMediaProvidersFromDaemon(): Promise<DaemonMediaProvidersFetchResult> {
   try {
-    const response = await fetch('/api/media/config');
+    const response = await odFetch('/api/media/config');
     if (!response.ok) return { status: 'error' };
     const payload = await response.json() as PublicMediaProviderConfigResponse;
     const rawProviders = payload.providers ?? {};
@@ -580,7 +581,7 @@ export async function syncComposioConfigToDaemon(
     ...(apiKey.trim() || !config?.apiKeyConfigured ? { apiKey } : {}),
   };
   try {
-    const response = await fetch('/api/connectors/composio/config', {
+    const response = await odFetch('/api/connectors/composio/config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),
@@ -752,7 +753,7 @@ export async function syncMediaProvidersToDaemon(
       options?.daemonProviders,
       { force: options?.force },
     );
-    const response = await fetch('/api/media/config', {
+    const response = await odFetch('/api/media/config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(payload),
@@ -766,7 +767,7 @@ export async function syncMediaProvidersToDaemon(
 
 export async function fetchDaemonConfig(): Promise<AppConfigPrefs | null> {
   try {
-    const res = await fetch('/api/app-config');
+    const res = await odFetch('/api/app-config');
     if (!res.ok) return null;
     const data = await res.json();
     return data?.config ?? null;
@@ -795,7 +796,7 @@ export async function syncConfigToDaemon(
     customInstructions: config.customInstructions ?? null,
   };
   try {
-    const response = await fetch('/api/app-config', {
+    const response = await odFetch('/api/app-config', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(prefs),

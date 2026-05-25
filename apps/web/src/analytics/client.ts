@@ -1,3 +1,4 @@
+import { odFetch } from '../utils/odFetch';
 // PostHog browser client wrapper. Lazy-loads posthog-js only after the
 // daemon /api/analytics/config response confirms a key is present, so dev
 // builds and forks impose zero runtime cost. All entry points are
@@ -105,7 +106,7 @@ export function bootstrapExceptionTracking(context: AnalyticsContext): Promise<v
   if (exceptionBootstrapPromise) return exceptionBootstrapPromise;
   exceptionBootstrapPromise = (async () => {
     try {
-      const res = await fetch('/api/analytics/config');
+      const res = await odFetch('/api/analytics/config');
       if (!res.ok) {
         clearExceptionTrackingContext();
         return;
@@ -147,7 +148,7 @@ export async function getAnalyticsClient(
   // trigger a fresh init.
   const pending = (async () => {
     try {
-      const res = await fetch('/api/analytics/config');
+      const res = await odFetch('/api/analytics/config');
       if (!res.ok) return null;
       const cfg = (await res.json()) as AnalyticsConfigResponse;
       if (!cfg.enabled || !cfg.key || !cfg.host) return null;

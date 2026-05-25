@@ -1,3 +1,4 @@
+import { odFetch } from '../utils/odFetch';
 // Project / conversation / message / tab persistence — backed by the
 // daemon's SQLite store. All writes round-trip through HTTP so projects
 // stay coherent across multiple browser tabs and across restarts.
@@ -31,7 +32,7 @@ export type { PluginShareAction } from '@open-design/contracts';
 
 export async function listProjects(): Promise<Project[]> {
   try {
-    const resp = await fetch('/api/projects');
+    const resp = await odFetch('/api/projects');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { projects: Project[] };
     return json.projects ?? [];
@@ -72,7 +73,7 @@ export async function createProject(input: {
     // calling it directly throws — the surrounding try/catch then turns
     // the Create button into a silent no-op (issue #849).
     const id = randomUUID();
-    const resp = await fetch('/api/projects', {
+    const resp = await odFetch('/api/projects', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...input }),
@@ -91,7 +92,7 @@ export async function createProject(input: {
 export async function importFolderProject(
   input: ImportFolderRequest,
 ): Promise<ImportFolderResponse> {
-  const resp = await fetch('/api/import/folder', {
+  const resp = await odFetch('/api/import/folder', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
@@ -113,7 +114,7 @@ export async function importClaudeDesignZip(
   try {
     const form = new FormData();
     form.append('file', file);
-    const resp = await fetch('/api/import/claude-design', {
+    const resp = await odFetch('/api/import/claude-design', {
       method: 'POST',
       body: form,
     });
@@ -132,7 +133,7 @@ export async function importClaudeDesignZip(
 
 export async function listTemplates(): Promise<ProjectTemplate[]> {
   try {
-    const resp = await fetch('/api/templates');
+    const resp = await odFetch('/api/templates');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { templates: ProjectTemplate[] };
     return json.templates ?? [];
@@ -158,7 +159,7 @@ export async function saveTemplate(input: {
   sourceProjectId: string;
 }): Promise<ProjectTemplate | null> {
   try {
-    const resp = await fetch('/api/templates', {
+    const resp = await odFetch('/api/templates', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
@@ -392,7 +393,7 @@ export async function listPlugins(
   options: ListPluginsOptions = {},
 ): Promise<InstalledPluginRecord[]> {
   try {
-    const resp = await fetch('/api/plugins');
+    const resp = await odFetch('/api/plugins');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { plugins?: InstalledPluginRecord[] };
     const plugins = json.plugins ?? [];
@@ -418,7 +419,7 @@ interface PluginInstallEvent {
 export async function installPluginSource(source: string): Promise<PluginInstallOutcome> {
   const log: string[] = [];
   try {
-    const resp = await fetch('/api/plugins/install', {
+    const resp = await odFetch('/api/plugins/install', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source }),
@@ -902,7 +903,7 @@ export interface PluginMarketplaceMutationOutcome {
 
 export async function listPluginMarketplaces(): Promise<PluginMarketplace[]> {
   try {
-    const resp = await fetch('/api/marketplaces');
+    const resp = await odFetch('/api/marketplaces');
     if (!resp.ok) return [];
     const json = (await resp.json()) as { marketplaces?: PluginMarketplace[] };
     return json.marketplaces ?? [];
@@ -916,7 +917,7 @@ export async function addPluginMarketplace(input: {
   trust: PluginMarketplaceTrust;
 }): Promise<PluginMarketplaceMutationOutcome> {
   try {
-    const resp = await fetch('/api/marketplaces', {
+    const resp = await odFetch('/api/marketplaces', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),

@@ -1,3 +1,4 @@
+import { odFetch } from '../utils/odFetch';
 // Web client for the daemon's external-MCP endpoints.
 //
 // `GET /api/mcp/servers` returns both the user's saved entries AND the
@@ -22,7 +23,7 @@ export type {
 
 export async function fetchMcpServers(): Promise<McpServersResponse | null> {
   try {
-    const res = await fetch('/api/mcp/servers');
+    const res = await odFetch('/api/mcp/servers');
     if (!res.ok) return null;
     const data = (await res.json()) as McpServersResponse;
     return {
@@ -38,7 +39,7 @@ export async function saveMcpServers(
   servers: McpServerConfig[],
 ): Promise<McpServersResponse | null> {
   try {
-    const res = await fetch('/api/mcp/servers', {
+    const res = await odFetch('/api/mcp/servers', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ servers }),
@@ -76,7 +77,7 @@ export async function startMcpOAuth(
 ): Promise<StartMcpOAuthResult> {
   let res: Response;
   try {
-    res = await fetch('/api/mcp/oauth/start', {
+    res = await odFetch('/api/mcp/oauth/start', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ serverId }),
@@ -148,7 +149,7 @@ export async function fetchMcpOAuthStatus(
 
 export async function disconnectMcpOAuth(serverId: string): Promise<boolean> {
   try {
-    const res = await fetch('/api/mcp/oauth/disconnect', {
+    const res = await odFetch('/api/mcp/oauth/disconnect', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ serverId }),

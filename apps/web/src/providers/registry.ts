@@ -691,8 +691,7 @@ export async function fetchPromptTemplate(
 export async function daemonIsLive(): Promise<boolean> {
   if (!isDaemonConnected()) return false;
   try {
-    // Use relative path so Next.js rewrites proxy to the remote daemon.
-    const resp = await fetch('/api/health');
+    const resp = await fetchApi('/api/health');
     return resp.ok;
   } catch {
     return false;

@@ -1,3 +1,4 @@
+import { odFetch } from '../utils/odFetch';
 import type { AudioVoiceOption } from '@open-design/contracts';
 
 type JsonRecord = Record<string, unknown>;
@@ -69,7 +70,7 @@ function normalizeVoice(value: unknown): AudioVoiceOption | null {
 export async function fetchElevenLabsVoiceOptions(
   signal?: AbortSignal,
 ): Promise<AudioVoiceOption[]> {
-  const response = await fetch('/api/media/providers/elevenlabs/voices?limit=100', {
+  const response = await odFetch('/api/media/providers/elevenlabs/voices?limit=100', {
     signal,
   });
   if (!response.ok) {
