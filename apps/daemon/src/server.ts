@@ -3398,7 +3398,7 @@ export async function startServer({
       res.setHeader('Access-Control-Allow-Credentials', 'true');
     }
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-od-client, x-od-request-id, x-od-tab, x-od-skill');
     res.setHeader('Access-Control-Max-Age', '600');
     if (req.method === 'OPTIONS') {
       return res.status(204).end();
