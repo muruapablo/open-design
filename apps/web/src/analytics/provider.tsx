@@ -1,5 +1,6 @@
-import { odFetch } from "../utils/odFetch";
 'use client';
+
+import { odFetch } from "../utils/odFetch";
 
 import {
   createContext,
