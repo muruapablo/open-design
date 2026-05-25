@@ -21,7 +21,8 @@ const DAEMON_ORIGIN = `http://127.0.0.1:${DAEMON_PORT}`;
 const isProd = process.env.NODE_ENV !== 'development';
 const webOutputMode = process.env.OD_WEB_OUTPUT_MODE;
 const isServerOutput = webOutputMode === 'server' || webOutputMode === 'standalone';
-const shouldStaticExport = isProd && !isServerOutput;
+// Disable static export on Vercel — middleware (proxy) requires server runtime
+const shouldStaticExport = isProd && !isServerOutput && !process.env.VERCEL;
 
 const WEB_ROOT = dirname(fileURLToPath(import.meta.url));
 
