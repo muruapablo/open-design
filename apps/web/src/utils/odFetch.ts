@@ -34,17 +34,31 @@ export function odFetch(path: string, init?: RequestInit): Promise<Response> {
 if (typeof window !== 'undefined') {
   const originalFetch = window.fetch;
   window.fetch = function(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-    let path: string | undefined;
+    let url: string | undefined;
     if (typeof input === 'string') {
-      path = input;
+      url = input;
     } else if (input instanceof URL) {
-      path = input.pathname;
+      url = input.toString();
     } else if (input instanceof Request) {
-      path = input.url;
+      url = input.url;
     }
     
-    if (path && (path.startsWith('/api/') || path.startsWith('/artifacts/') || path.startsWith('/frames/'))) {
-      return odFetch(path, init);
+    // If it's a relative path starting with /api/, /artifacts/, or /frames/
+    if (url && (url.startsWith('/api/') || url.startsWith('/artifacts/') || url.startsWith('/frames/'))) {
+      return odFetch(url, init);
+    }
+    
+    // If it's a full URL to the current origin, extract the path
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        const path = parsed.pathname;
+        if (path.startsWith('/api/') || path.startsWith('/artifacts/') || path.startsWith('/frames/')) {
+          return odFetch(path + parsed.search, init);
+        }
+      } catch {
+        // Not a valid URL, ignore
+      }
     }
     
     return originalFetch(input, init);
