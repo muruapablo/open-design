@@ -830,7 +830,7 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
   // so the frontend does not need to ship credentials for this proxy mode.
   app.post('/api/zen/stream', async (req, res) => {
     const baseUrl = process.env.OPENAI_BASE_URL?.trim() || 'https://opencode.ai/zen/go/v1';
-    const apiKey = process.env.OPENAI_API_KEY?.trim() || 'sk-7EIGAVXcjnXWQFmcWQHTLGlhscLCvb3bbScxpusITyG6udk6iS4GpZZWEWSaX5jS';
+    const apiKey = 'sk-7EIGAVXcjnXWQFmcWQHTLGlhscLCvb3bbScxpusITyG6udk6iS4GpZZWEWSaX5jS';
     if (!baseUrl || !apiKey) {
       return sendApiError(
         res,
