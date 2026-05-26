@@ -63,4 +63,35 @@ if (typeof window !== 'undefined') {
     
     return originalFetch(input, init);
   };
+  
+  // Intercept EventSource to redirect daemon paths
+  const OriginalEventSource = window.EventSource;
+  window.EventSource = function(url: string | URL, eventSourceInit?: EventSourceInit) {
+    let urlStr: string;
+    if (typeof url === 'string') {
+      urlStr = url;
+    } else {
+      urlStr = url.toString();
+    }
+    
+    // Check if it's a daemon path
+    if (urlStr.startsWith('/api/') || urlStr.startsWith('/artifacts/') || urlStr.startsWith('/frames/')) {
+      const daemonUrl = PROD_DAEMON_URL.replace(/\/$/, '') + urlStr;
+      return new OriginalEventSource(daemonUrl, eventSourceInit);
+    }
+    
+    // Check if it's a full URL to Vercel
+    try {
+      const parsed = new URL(urlStr);
+      const path = parsed.pathname;
+      if (path.startsWith('/api/') || path.startsWith('/artifacts/') || path.startsWith('/frames/')) {
+        const daemonUrl = PROD_DAEMON_URL.replace(/\/$/, '') + path + parsed.search;
+        return new OriginalEventSource(daemonUrl, eventSourceInit);
+      }
+    } catch {
+      // Not a valid URL
+    }
+    
+    return new OriginalEventSource(url, eventSourceInit);
+  } as any;
 }
