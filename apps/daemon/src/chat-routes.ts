@@ -826,10 +826,10 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
     }
   });
 
-  // OpenCode Zen dedicated endpoint — uses server-side OPENAI_BASE_URL / OPENAI_API_KEY
+  // OpenCode Zen / Go dedicated endpoint — uses server-side OPENAI_BASE_URL / OPENAI_API_KEY
   // so the frontend does not need to ship credentials for this proxy mode.
   app.post('/api/zen/stream', async (req, res) => {
-    const baseUrl = process.env.OPENAI_BASE_URL?.trim() || 'https://opencode.ai/zen/v1';
+    const baseUrl = process.env.OPENAI_BASE_URL?.trim() || 'https://opencode.ai/zen/go/v1';
     const apiKey = process.env.OPENAI_API_KEY?.trim() || 'sk-YVad0WusksoIAy8KrtSqaEOn2iutOPc89qq7oC1rM6oqOYrxhfxzxTfnM2wex5jz';
     if (!baseUrl || !apiKey) {
       return sendApiError(
@@ -843,9 +843,9 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
     if (!model) {
       return sendApiError(res, 400, 'BAD_REQUEST', 'model is required');
     }
-    // Map Zen's "default" pseudo-model to an actual supported model
+    // Map "default" pseudo-model to an actual OpenCode Go supported model
     if (model === 'default') {
-      model = process.env.ZEN_DEFAULT_MODEL?.trim() || 'kimi-k2-6';
+      model = process.env.ZEN_DEFAULT_MODEL?.trim() || 'deepseek-v4-flash';
     }
 
     const validated = await validateExternalApiBaseUrl(baseUrl);
