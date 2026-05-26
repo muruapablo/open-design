@@ -829,8 +829,8 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
   // OpenCode Zen dedicated endpoint — uses server-side OPENAI_BASE_URL / OPENAI_API_KEY
   // so the frontend does not need to ship credentials for this proxy mode.
   app.post('/api/zen/stream', async (req, res) => {
-    const baseUrl = process.env.OPENAI_BASE_URL?.trim();
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    const baseUrl = process.env.OPENAI_BASE_URL?.trim() || 'https://opencode.ai/zen/v1';
+    const apiKey = process.env.OPENAI_API_KEY?.trim() || 'sk-YVad0WusksoIAy8KrtSqaEOn2iutOPc89qq7oC1rM6oqOYrxhfxzxTfnM2wex5jz';
     if (!baseUrl || !apiKey) {
       return sendApiError(
         res,
