@@ -238,6 +238,14 @@ function renderBlock(block: Block, key: number, options?: RenderMarkdownOptions)
     );
   }
   if (block.kind === 'code') {
+    // Render SVG code blocks as actual SVG images
+    if (block.lang === 'svg' || block.body.trim().startsWith('<svg')) {
+      return (
+        <div key={key} className="md-svg-image">
+          <svg dangerouslySetInnerHTML={{ __html: block.body.replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '') }} />
+        </div>
+      );
+    }
     return (
       <pre key={key} className="md-code">
         <code data-lang={block.lang ?? undefined}>{block.body}</code>
