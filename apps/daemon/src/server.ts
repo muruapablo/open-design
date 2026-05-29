@@ -12370,6 +12370,7 @@ export async function startServer({
     design,
     http: httpDeps,
     paths: pathDeps,
+    projectFiles: projectFileDeps,
     chat: { startChatRun, submitToolResultToRun },
     agents: agentDeps,
     critique: critiqueDeps,

@@ -38,7 +38,27 @@ const FEEDBACK_REASON_ALLOWLIST: ReadonlySet<string> = new Set([
   'other',
 ]);
 
-export interface RegisterChatRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'chat' | 'agents' | 'critique' | 'validation' | 'lifecycle' | 'paths' | 'telemetry'> {}
+export interface RegisterChatRoutesDeps extends RouteDeps<'db' | 'design' | 'http' | 'chat' | 'agents' | 'critique' | 'validation' | 'lifecycle' | 'paths' | 'telemetry' | 'projectFiles'> {}
+
+/**
+ * Extracts fenced code blocks of design-renderable types (html, svg) from
+ * an assistant text response and assigns safe file names.
+ */
+function extractDesignCodeBlocks(text: string): Array<{ fileName: string; content: string }> {
+  const results: Array<{ fileName: string; content: string }> = [];
+  // Match ```html or ```svg fenced blocks, or bare <html>/<svg> blocks
+  const fenced = /```(html|svg)\s*\n([\s\S]*?)```/gi;
+  let match: RegExpExecArray | null;
+  let index = 0;
+  while ((match = fenced.exec(text)) !== null) {
+    const lang = (match[1] ?? 'html').toLowerCase();
+    const content = (match[2] ?? '').trim();
+    if (!content) continue;
+    const ext = lang === 'svg' ? 'svg' : 'html';
+    results.push({ fileName: `design-${++index}.${ext}`, content });
+  }
+  return results;
+}
 
 export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
   const { db, design } = ctx;
@@ -839,7 +859,7 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
         'OpenCode Zen is not configured. Set OPENAI_BASE_URL and OPENAI_API_KEY environment variables.',
       );
     }
-    let { model, systemPrompt, messages, maxTokens } = req.body || {};
+    let { model, systemPrompt, messages, maxTokens, projectId } = req.body || {};
     if (!model) {
       return sendApiError(res, 400, 'BAD_REQUEST', 'model is required');
     }
@@ -901,9 +921,9 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
       }
 
       let ended = false;
+      let fullText = '';
       await streamUpstreamSse(response, ({ payload, data }: any) => {
         if (payload === '[DONE]') {
-          sse.send('end', {});
           ended = true;
           return true;
         }
@@ -915,10 +935,35 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
           return true;
         }
         const delta = extractOpenAIText(data);
-        if (delta) sse.send('delta', { delta });
+        if (delta) {
+          fullText += delta;
+          sse.send('delta', { delta });
+        }
         return false;
       });
+
+      // After the text stream completes: extract design code blocks and write
+      // them as project files so the right panel ("Archivos de diseño") fills.
+      const safeProjectId = typeof projectId === 'string' && projectId.trim() && isSafeProjectId(projectId.trim()) ? projectId.trim() : null;
+      if (safeProjectId && fullText) {
+        const { writeProjectFile, ensureProject } = ctx.projectFiles;
+        const blocks = extractDesignCodeBlocks(fullText);
+        for (const block of blocks) {
+          const toolUseId = `zen-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          sse.send('agent', { type: 'tool_use', id: toolUseId, name: 'write_file', input: { path: block.fileName, content: block.content } });
+          try {
+            await ensureProject(ctx.paths.PROJECTS_DIR, safeProjectId, null);
+            await writeProjectFile(ctx.paths.PROJECTS_DIR, safeProjectId, block.fileName, Buffer.from(block.content, 'utf8'), {}, null);
+            sse.send('agent', { type: 'tool_result', toolUseId, content: `written: ${block.fileName}`, isError: false });
+          } catch (writeErr: any) {
+            console.error(`[zen] write_file failed: ${writeErr.message}`);
+            sse.send('agent', { type: 'tool_result', toolUseId, content: String(writeErr.message), isError: true });
+          }
+        }
+      }
+
       if (!ended) sse.send('end', {});
+      else sse.send('end', {});
       sse.end();
     } catch (err: any) {
       console.error(`[zen] internal error: ${err.message}`);

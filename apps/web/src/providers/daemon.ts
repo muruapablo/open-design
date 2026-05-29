@@ -265,7 +265,7 @@ export async function streamViaDaemon({
 }: DaemonStreamOptions): Promise<void> {
   // Route OpenCode Zen through the dedicated proxy endpoint
   if (agentId === 'zen') {
-    return streamViaZen({ history, signal, cancelSignal, handlers, model, onRunStatus, onRunEventId });
+    return streamViaZen({ history, signal, cancelSignal, handlers, model, projectId, onRunStatus, onRunEventId });
   }
 
   const emitRunStatus = (status: ChatRunStatus) => {
@@ -657,6 +657,7 @@ async function streamViaZen({
   cancelSignal,
   handlers,
   model,
+  projectId,
   onRunStatus,
   onRunEventId,
 }: Omit<DaemonStreamOptions, 'agentId'> & { model?: string | null }): Promise<void> {
@@ -671,6 +672,7 @@ async function streamViaZen({
     model: model || 'kimi-k2-6',
     messages,
     maxTokens: 8192,
+    ...(projectId ? { projectId } : {}),
   });
 
   try {
@@ -737,6 +739,11 @@ async function streamViaZen({
           emitRunStatus('succeeded');
           handlers.onDone(acc);
           return;
+        }
+        if (eventName === 'agent') {
+          const agentEvent = translateAgentEvent(eventData as DaemonAgentPayload);
+          if (agentEvent) handlers.onAgentEvent(agentEvent);
+          continue;
         }
         if (eventName === 'error') {
           emitRunStatus('failed');
