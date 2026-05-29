@@ -241,9 +241,7 @@ function renderBlock(block: Block, key: number, options?: RenderMarkdownOptions)
     // Render SVG code blocks as actual SVG images
     if (block.lang === 'svg' || block.body.trim().startsWith('<svg')) {
       return (
-        <div key={key} className="md-svg-image">
-          <svg dangerouslySetInnerHTML={{ __html: block.body.replace(/<svg[^>]*>/, '').replace(/<\/svg>/, '') }} />
-        </div>
+        <div key={key} className="md-svg-image" dangerouslySetInnerHTML={{ __html: block.body.trim() }} />
       );
     }
     return (
