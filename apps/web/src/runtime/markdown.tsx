@@ -244,6 +244,20 @@ function renderBlock(block: Block, key: number, options?: RenderMarkdownOptions)
         <div key={key} className="md-svg-image" dangerouslySetInnerHTML={{ __html: block.body.trim() }} />
       );
     }
+    // Render HTML code blocks in a sandboxed iframe
+    if (block.lang === 'html' || block.body.trim().startsWith('<!DOCTYPE') || block.body.trim().startsWith('<html')) {
+      const srcDoc = block.body.trim();
+      return (
+        <iframe
+          key={key}
+          className="md-html-preview"
+          srcDoc={srcDoc}
+          sandbox="allow-scripts"
+          style={{ width: '100%', minHeight: '400px', border: 'none', borderRadius: '8px' }}
+          title="preview"
+        />
+      );
+    }
     return (
       <pre key={key} className="md-code">
         <code data-lang={block.lang ?? undefined}>{block.body}</code>
